@@ -1,22 +1,35 @@
 {
-  "name": "electron-quick-start",
-  "version": "1.0.0",
-  "description": "A minimal Electron application",
+  "name": "doorsock",
+  "version": "v0.1.0",
+  "description": "Desktop client for Doorsock unified do not disturb",
   "main": "src/main.js",
   "scripts": {
-    "start": "electron ."
+    "start": "electron .",
+    "test": "jest -c jest/config.js",
+    "test:unit": "jest -c jest/config.unit.js",
+    "test:integration": "jest -c jest/config.integration.js",
+    "test:e2e": "jest -c jest/config.e2e.js",
+    "lint": "eslint src",
+    "lint:fix": "eslint src --fix",
+    "dist": "electron-builder",
+    "dist:mac": "node build.js --target=mac",
+    "dist:linux": "node build.js --target=linux",
+    "dist:windows": "node build.js --target=windows"
   },
-  "repository": "https://github.com/electron/electron-quick-start",
+  "repository": "https://github.com/doorsock/desktop",
   "keywords": [
-    "Electron",
-    "quick",
-    "start",
-    "tutorial",
-    "demo"
+    "doorsock",
+    "do not disturb"
   ],
-  "author": "GitHub",
-  "license": "CC0-1.0",
+  "author": "Daniel Fridkin",
+  "license": "GPL-3.0-or-later",
   "devDependencies": {
-    "electron": "^5.0.0"
+    "electron": "^5.0.0",
+    "electron-builder": "^20.39.0",
+    "eslint": "^5.16.0",
+    "eslint-config-google": "^0.12.0",
+    "jest": "^24.8.0",
+    "minimist": "^1.2.0",
+    "spectron": "^5.0.0"
   }
 }

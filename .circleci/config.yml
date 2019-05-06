@@ -1,16 +1,171 @@
-version: 2
-jobs:
-  build:
-    docker:
-      - image: debian:stretch
+version: 2.1
 
+orbs:
+  node: circleci/node@1.0.1
+
+workflows:
+  version: 2
+  build-test-publish:
+    jobs:
+      - lint
+      - unit-test:
+          requires:
+            - lint
+      - integration-test:
+          requires:
+            - lint
+      - e2e-test:
+          requires:
+            - lint
+      - package-linux:
+          context: electron-builder
+          requires:
+            - unit-test
+            - integration-test
+            - e2e-test
+      - package-windows:
+          context: electron-builder
+          requires:
+            - unit-test
+            - integration-test
+            - e2e-test
+      - package-mac:
+          context: electron-builder
+          requires:
+            - unit-test
+            - integration-test
+            - e2e-test
+      - upload-to-gcloud:
+          context: gcloud
+          requires:
+            - package-linux
+            - package-windows
+            - package-mac
+jobs:
+  lint:
+    docker:
+      - image: circleci/node:lts
     steps:
       - checkout
+      - node/install-yarn
+      - node/with-cache:
+          steps:
+            - run: 
+                name: Install dependencies
+                command: yarn install
+            - run: 
+                name: Lint files
+                command: yarn lint
 
+  unit-test:
+    docker:
+      - image: circleci/node:lts-browsers
+    steps:
+      - checkout
+      - node/install-yarn
+      - node/with-cache:
+          steps:
+            - run: 
+                name: Install dependencies
+                command: yarn install
+            - node/with-splitting:
+                steps:
+                  - run: 
+                      name: Run unit tests
+                      command: yarn test:unit
+  integration-test:
+      docker:
+        - image: circleci/node:lts-browsers
+      steps:
+        - checkout
+        - node/install-yarn
+        - node/with-cache:
+            steps:
+              - run: yarn install
+              - node/with-splitting:
+                  steps:
+                    - run: 
+                        name: Run integration tests
+                        command: yarn test:integration
+  e2e-test:
+      docker:
+        - image: circleci/node:lts-browsers
+      steps:
+        - checkout
+        - node/install-yarn
+        - node/with-cache:
+            steps:
+              - run: yarn install
+              - node/with-splitting:
+                  steps:
+                    - run: 
+                        name: Run end-to-end tests
+                        command: yarn test:e2e
+  package-linux:
+    docker:
+      - image: electronuserland/builder:10
+    steps:
+      - checkout
+      - node/install-yarn
+      - node/with-cache:
+          steps:
+            - run: 
+                name: Install dependencies
+                command: yarn --link-duplicates --pure-lockfile
+            - run:
+                name: Package and publish Linux app
+                command: yarn dist:linux
+      - persist_to_workspace:
+          root: dist
+          paths:
+            - 'Doorsock.AppImage'
+  package-windows:
+    docker:
+      - image: electronuserland/builder:wine
+    steps:
+      - checkout
+      - node/install-yarn
+      - node/with-cache:
+          steps:
+            - run: 
+                name: Install dependencies
+                command: yarn --link-duplicates --pure-lockfile
+            - run:
+                name: Package and publish Windows app
+                command: yarn dist:windows
+      - persist_to_workspace:
+          root: dist
+          paths:
+            - 'Doorsock Setup.exe'
+  package-mac:
+    macos:
+      xcode: "10.2.1"
+    steps:
+      - checkout
       - run:
-          name: Greeting
-          command: echo Hello, world.
-
+          name: Install node and yarn
+          command: brew install node yarn
       - run:
-          name: Print the Current Time
-          command: date
+          name: Install dependencies
+          command: yarn --link-duplicates --pure-lockfile
+      - run:
+          name: Package and publish OS X app
+          command: yarn dist:mac
+      - persist_to_workspace:
+          root: dist
+          paths:
+            - 'Doorsock.dmg'
+  upload-to-gcloud:
+    docker:
+      - image: google/cloud-sdk:latest
+    steps:
+      - attach_workspace:
+          at: /tmp/dist
+      - run:
+          name: Authenticate to GCP
+          command: |
+            echo $GCLOUD_SERVICE_ACCOUNT_KEY | gcloud auth activate-service-account --key-file=-
+            gcloud --quiet config set project doorsock
+      - run:
+          name: Upload to GCP bucket
+          command: gsutil cp /tmp/dist/* gs://doorsock-desktop
