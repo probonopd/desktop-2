@@ -41,6 +41,9 @@ workflows:
             - package-linux
             - package-windows
             - package-mac
+          filters:
+            branches:
+              only: master
 jobs:
   lint:
     docker:
