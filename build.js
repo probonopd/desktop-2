@@ -35,7 +35,7 @@ builder.build({
 
     'linux': {
       'target': 'appImage',
-      'category': 'utility',
+      'category': 'Utility',
       'executableName': 'doorsock',
       'icon': 'build/icons',
     },
